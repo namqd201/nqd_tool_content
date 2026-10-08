@@ -1,8 +1,6 @@
 package com.nqd.nqd_tool_content.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.*;
 
 import java.util.UUID;
@@ -56,4 +54,8 @@ public class MediaAsset extends BaseEntity {
 
     @Column(name = "model", length = 50)
     private String model;
+
+    @Basic(fetch = FetchType.LAZY)
+    @Column(name = "data", columnDefinition = "bytea")
+    private byte[] data;
 }

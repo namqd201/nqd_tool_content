@@ -57,6 +57,7 @@ public class LocalStorageServiceImpl implements StorageService {
                 .prompt(prompt)
                 .imageProvider(provider)
                 .model(model)
+                .data(data)
                 .build();
 
         return mediaAssetRepository.save(asset);
@@ -68,12 +69,29 @@ public class LocalStorageServiceImpl implements StorageService {
                 .orElseThrow(() -> new IllegalArgumentException("Media not found: " + publicToken));
 
         Path filePath = Paths.get(storageDir).resolve(asset.getStorageKey());
-        try {
-            return Files.readAllBytes(filePath);
-        } catch (IOException e) {
-            log.error("Failed to read media file: {}", asset.getStorageKey(), e);
-            throw new RuntimeException("Storage read error", e);
+        if (Files.exists(filePath)) {
+            try {
+                return Files.readAllBytes(filePath);
+            } catch (IOException e) {
+                log.warn("Could not read media from file, falling back to database: {}", asset.getStorageKey());
+            }
         }
+
+        // Fallback: nếu disk file không tồn tại (do Render ephemeral disk hoặc restart), lấy từ DB
+        if (asset.getData() != null && asset.getData().length > 0) {
+            try {
+                Path dirPath = Paths.get(storageDir);
+                if (!Files.exists(dirPath)) {
+                    Files.createDirectories(dirPath);
+                }
+                Files.write(filePath, asset.getData());
+            } catch (Exception ex) {
+                log.warn("Could not re-cache media file to disk: {}", ex.getMessage());
+            }
+            return asset.getData();
+        }
+
+        throw new RuntimeException("Storage read error: image not available on disk or db for " + publicToken);
     }
 
     @Override
