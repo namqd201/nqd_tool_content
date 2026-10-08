@@ -35,12 +35,20 @@ public class SecurityConfig {
     @Value("${app.frontend.url:http://localhost:3000}")
     private String frontendUrl;
 
+    @Value("${server.servlet.session.cookie.domain:}")
+    private String cookieDomain;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        if (cookieDomain != null && !cookieDomain.isBlank()) {
+            csrfTokenRepository.setCookieCustomizer(customizer -> customizer.domain(cookieDomain));
+        }
+
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf
-                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRepository(csrfTokenRepository)
                         .csrfTokenRequestHandler(new org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler())
                         .ignoringRequestMatchers(
                                 "/oauth2/**",
@@ -110,7 +118,7 @@ public class SecurityConfig {
                         })
                         .failureHandler((request, response, exception) -> {
                             String targetFrontend = frontendUrl != null ? frontendUrl.split(",")[0].trim() : "http://localhost:3000";
-                            log.error("OAuth2 authentication failure: {}", exception.getMessage());
+                            log.error("OAuth2 authentication failure: {}", exception.getMessage(), exception);
                             response.sendRedirect(targetFrontend + "/login?error=auth_failed");
                         })
                 )
