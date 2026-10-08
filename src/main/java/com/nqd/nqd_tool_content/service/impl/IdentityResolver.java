@@ -89,10 +89,16 @@ public class IdentityResolver {
             userIdentityRepository.save(identity);
 
             user = userRepository.findById(identity.getUserId())
-                    .orElseGet(() -> createOrUpdateOwnerUser(finalEmail, finalName, finalGivenName, finalFamilyName, finalPicture, providerKey));
+                    .orElseGet(() -> {
+                        User newUser = createOrUpdateOwnerUser(finalEmail, finalName, finalGivenName, finalFamilyName, finalPicture, providerKey);
+                        return userRepository.save(newUser);
+                    });
         } else {
             // Check if owner user already exists in single-user mode
             user = getOrCreateSingleUser(email, name, givenName, familyName, picture, providerKey);
+            if (user.getId() == null) {
+                user = userRepository.save(user);
+            }
 
             UserIdentity newIdentity = UserIdentity.builder()
                     .userId(user.getId())
@@ -112,8 +118,12 @@ public class IdentityResolver {
         user.setAuthProvider(providerKey);
         user = userRepository.save(user);
 
-        auditService.logAction(user.getId(), "LOGIN_SUCCESS", "USER", user.getId().toString(),
-                String.format("Provider: %s, Email: %s", providerKey, email), request);
+        try {
+            auditService.logAction(user.getId(), "LOGIN_SUCCESS", "USER", user.getId().toString(),
+                    String.format("Provider: %s, Email: %s", providerKey, email), request);
+        } catch (Exception ex) {
+            log.warn("Could not write audit log for login: {}", ex.getMessage());
+        }
 
         return Optional.of(user);
     }
@@ -150,7 +160,8 @@ public class IdentityResolver {
         if (!allUsers.isEmpty()) {
             return allUsers.get(0); // Single-user owner
         }
-        return createOrUpdateOwnerUser(email, name, givenName, familyName, picture, provider);
+        User newUser = createOrUpdateOwnerUser(email, name, givenName, familyName, picture, provider);
+        return userRepository.save(newUser);
     }
 
     private User createOrUpdateOwnerUser(String email, String name, String givenName, String familyName, String picture, String provider) {

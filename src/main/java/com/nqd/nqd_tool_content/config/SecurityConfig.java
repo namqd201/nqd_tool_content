@@ -99,21 +99,26 @@ public class SecurityConfig {
                                 .userService(customOAuth2UserService)
                         )
                         .successHandler((request, response, authentication) -> {
-                            OAuth2AuthenticationToken authToken = (OAuth2AuthenticationToken) authentication;
-                            String provider = authToken.getAuthorizedClientRegistrationId();
-                            OAuth2User oAuth2User = authToken.getPrincipal();
-
-                            Optional<User> resolvedUserOpt = identityResolver
-                                    .resolveAndAuthenticate(provider, oAuth2User, request);
-
                             String targetFrontend = frontendUrl != null ? frontendUrl.split(",")[0].trim() : "http://localhost:3000";
-                            if (resolvedUserOpt.isPresent()) {
-                                log.info("OAuth2 login SUCCESS for provider={}", provider);
-                                response.sendRedirect(targetFrontend + "/schedule");
-                            } else {
-                                log.warn("OAuth2 login REJECTED (not in allowlist) for provider={}", provider);
-                                request.getSession().invalidate();
-                                response.sendRedirect(targetFrontend + "/login?error=not_allowed");
+                            try {
+                                OAuth2AuthenticationToken authToken = (OAuth2AuthenticationToken) authentication;
+                                String provider = authToken.getAuthorizedClientRegistrationId();
+                                OAuth2User oAuth2User = authToken.getPrincipal();
+
+                                Optional<User> resolvedUserOpt = identityResolver
+                                        .resolveAndAuthenticate(provider, oAuth2User, request);
+
+                                if (resolvedUserOpt.isPresent()) {
+                                    log.info("OAuth2 login SUCCESS for provider={}", provider);
+                                    response.sendRedirect(targetFrontend + "/schedule");
+                                } else {
+                                    log.warn("OAuth2 login REJECTED (not in allowlist) for provider={}", provider);
+                                    request.getSession().invalidate();
+                                    response.sendRedirect(targetFrontend + "/login?error=not_allowed");
+                                }
+                            } catch (Exception ex) {
+                                log.error("Unhandled error during OAuth2 success handling", ex);
+                                response.sendRedirect(targetFrontend + "/login?error=auth_failed");
                             }
                         })
                         .failureHandler((request, response, exception) -> {
