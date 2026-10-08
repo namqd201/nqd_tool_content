@@ -29,11 +29,21 @@ public class CloudinaryStorageServiceImpl implements StorageService {
     @Value("${cloudinary.cloud-name:}")
     private String cloudName;
 
-    @Value("${CLOUDINARY_URL:}")
+    @Value("${cloudinary.api-key:}")
+    private String apiKey;
+
+    @Value("${cloudinary.api-secret:}")
+    private String apiSecret;
+
+    @Value("${CLOUDINARY_URL:${cloudinary.url:}}")
     private String cloudinaryUrl;
 
     private boolean isCloudinaryConfigured() {
-        return (cloudName != null && !cloudName.isBlank()) || (cloudinaryUrl != null && !cloudinaryUrl.isBlank());
+        boolean hasUrl = (cloudinaryUrl != null && !cloudinaryUrl.isBlank());
+        boolean hasCredentials = (cloudName != null && !cloudName.isBlank())
+                && (apiKey != null && !apiKey.isBlank())
+                && (apiSecret != null && !apiSecret.isBlank());
+        return hasUrl || hasCredentials;
     }
 
     @Override

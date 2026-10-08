@@ -43,3 +43,4 @@ application-local.properties
 application-local*.properties
 application-secret.properties
 application-secret*.properties
+uploads/

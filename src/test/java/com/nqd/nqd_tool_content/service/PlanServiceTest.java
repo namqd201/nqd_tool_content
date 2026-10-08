@@ -47,14 +47,11 @@ public class PlanServiceTest {
 
     @BeforeEach
     void setUp() {
-        testUser = userRepository.findAll().stream().findFirst().orElseGet(() -> {
-            User u = User.builder()
-                    .email("plan_owner@test.com")
-                    .name("Plan Owner")
-                    .role("ROLE_USER")
-                    .build();
-            return userRepository.save(u);
-        });
+        testUser = userRepository.save(User.builder()
+                .email("plan_owner_" + UUID.randomUUID() + "@test.com")
+                .name("Plan Owner")
+                .role("ROLE_USER")
+                .build());
 
         SocialConnection conn = SocialConnection.builder()
                 .userId(testUser.getId())

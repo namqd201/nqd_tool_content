@@ -20,7 +20,7 @@ public class CloudinaryConfig {
     @Value("${cloudinary.api-secret:}")
     private String apiSecret;
 
-    @Value("${CLOUDINARY_URL:}")
+    @Value("${CLOUDINARY_URL:${cloudinary.url:}}")
     private String cloudinaryUrl;
 
     @Bean

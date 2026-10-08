@@ -47,14 +47,11 @@ public class ContentGenerationWorkerTest {
 
     @BeforeEach
     void setUp() {
-        testUser = userRepository.findAll().stream().findFirst().orElseGet(() -> {
-            User u = User.builder()
-                    .email("ai_test_owner@test.com")
-                    .name("AI Test Owner")
-                    .role("ROLE_USER")
-                    .build();
-            return userRepository.save(u);
-        });
+        testUser = userRepository.save(User.builder()
+                .email("ai_test_owner_" + UUID.randomUUID() + "@test.com")
+                .name("AI Test Owner")
+                .role("ROLE_USER")
+                .build());
 
         SocialConnection conn = SocialConnection.builder()
                 .userId(testUser.getId())

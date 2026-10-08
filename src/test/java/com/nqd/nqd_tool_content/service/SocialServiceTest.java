@@ -40,14 +40,11 @@ public class SocialServiceTest {
 
     @BeforeEach
     void setUp() {
-        testUser = userRepository.findAll().stream().findFirst().orElseGet(() -> {
-            User u = User.builder()
-                    .email("owner@test.com")
-                    .name("App Owner")
-                    .role("ROLE_USER")
-                    .build();
-            return userRepository.save(u);
-        });
+        testUser = userRepository.save(User.builder()
+                .email("social_owner_" + UUID.randomUUID() + "@test.com")
+                .name("App Owner")
+                .role("ROLE_USER")
+                .build());
     }
 
     @Test

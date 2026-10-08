@@ -45,10 +45,6 @@ public class SettingsController {
         return ResponseEntity.ok(settingsService.getAvailableAiProviders());
     }
 
-    @GetMapping("/ai/pipeline")
-    public ResponseEntity<com.nqd.nqd_tool_content.dto.response.AiPipelineProgressResponse> getAiPipelineProgress() {
-        return ResponseEntity.ok(settingsService.getAiPipelineProgress(getEffectiveUserId()));
-    }
 
     @PostMapping("/notifications/test")
     public ResponseEntity<Map<String, Object>> testNotification(@RequestBody Map<String, String> request) {

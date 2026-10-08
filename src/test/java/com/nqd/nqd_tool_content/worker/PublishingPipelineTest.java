@@ -57,14 +57,11 @@ public class PublishingPipelineTest {
 
     @BeforeEach
     void setUp() {
-        testUser = userRepository.findAll().stream().findFirst().orElseGet(() -> {
-            User u = User.builder()
-                    .email("pub_tester@test.com")
-                    .name("Publisher Tester")
-                    .role("ROLE_USER")
-                    .build();
-            return userRepository.save(u);
-        });
+        testUser = userRepository.save(User.builder()
+                .email("pub_tester_" + UUID.randomUUID() + "@test.com")
+                .name("Publisher Tester")
+                .role("ROLE_USER")
+                .build());
 
         UUID tempConnId = UUID.randomUUID();
         String encToken = cryptoUtil.encrypt("valid_test_token", tempConnId + ":access_token");
