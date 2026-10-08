@@ -148,7 +148,7 @@ public class PublishWorker {
         handlePublishResult(post, attempt, result);
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public PostAttempt recordWriteAhead(Post post, String workerId, int publishCycle, int attemptNo) {
         LocalDateTime now = LocalDateTime.now();
         post.setRequestSentAt(now);

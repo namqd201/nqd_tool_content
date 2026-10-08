@@ -26,8 +26,9 @@ COPY --from=builder /app/build/libs/*.jar app.jar
 # Expose port (Render sets $PORT dynamically)
 EXPOSE 8080
 ENV PORT=8080
+ENV TZ="Asia/Ho_Chi_Minh"
 
-# Optimize JVM memory footprint and force IPv4 for Render (512MB RAM)
-ENV JAVA_OPTS="-Xms128m -Xmx384m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+ExitOnOutOfMemoryError -Djava.net.preferIPv4Stack=true"
+# Optimize JVM memory footprint and force IPv4 for Render (512MB RAM) + set VN Timezone
+ENV JAVA_OPTS="-Xms128m -Xmx384m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+ExitOnOutOfMemoryError -Djava.net.preferIPv4Stack=true -Duser.timezone=Asia/Ho_Chi_Minh"
 
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Dserver.port=${PORT} -jar app.jar"]
