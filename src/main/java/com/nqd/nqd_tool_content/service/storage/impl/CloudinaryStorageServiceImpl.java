@@ -24,7 +24,7 @@ public class CloudinaryStorageServiceImpl implements StorageService {
     private final Cloudinary cloudinary;
     private final MediaAssetRepository mediaAssetRepository;
     private final LocalStorageServiceImpl localFallback;
-    private final RestClient.Builder restClientBuilder;
+    private final RestClient restClient = RestClient.create();
 
     @Value("${cloudinary.cloud-name:}")
     private String cloudName;
@@ -95,7 +95,7 @@ public class CloudinaryStorageServiceImpl implements StorageService {
         // 2. Download from Cloudinary URL if available
         if (asset.getStorageKey() != null && asset.getStorageKey().startsWith("http")) {
             try {
-                return restClientBuilder.build().get()
+                return restClient.get()
                         .uri(asset.getStorageKey())
                         .retrieve()
                         .body(byte[].class);
