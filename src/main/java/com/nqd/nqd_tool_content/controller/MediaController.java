@@ -28,6 +28,12 @@ public class MediaController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
 
+        if (asset.getStorageKey() != null && asset.getStorageKey().startsWith("http")) {
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(java.net.URI.create(asset.getStorageKey()))
+                    .build();
+        }
+
         try {
             byte[] bytes = storageService.getMediaBytes(token);
             HttpHeaders headers = new HttpHeaders();
