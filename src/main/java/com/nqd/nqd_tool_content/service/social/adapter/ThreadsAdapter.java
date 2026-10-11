@@ -5,6 +5,8 @@ import com.nqd.nqd_tool_content.service.social.dto.DiscoveredAccount;
 import com.nqd.nqd_tool_content.service.social.dto.PostResult;
 import com.nqd.nqd_tool_content.service.social.dto.PublishRequest;
 import com.nqd.nqd_tool_content.service.social.dto.RefreshTokenResult;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -31,6 +33,7 @@ import java.util.*;
 public class ThreadsAdapter implements SocialPlatformAdapter {
 
     private final RestClient restClient;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Value("${social.threads.api-url:https://graph.threads.net/v1.0}")
     private String threadsApiUrl;
@@ -80,9 +83,38 @@ public class ThreadsAdapter implements SocialPlatformAdapter {
                 return longLivedToken;
             }
         } catch (Exception e) {
-            log.warn("[ThreadsAdapter] Could not exchange long-lived token: {}. Using existing token.", e.getMessage());
+            String err = extractErrorMessage(e);
+            log.warn("[ThreadsAdapter] Could not exchange long-lived token: {}", err);
+            if (err.contains("client_secret") || err.contains("Invalid Client") || err.contains("101")) {
+                throw new com.nqd.nqd_tool_content.exception.BusinessException(
+                        "INVALID_APP_CREDENTIALS",
+                        "Threads App Secret không chính xác: " + err
+                );
+            }
+            if (err.contains("Session has expired") || err.contains("Error validating access token") || err.contains("code\":190") || err.contains("OAuthException")) {
+                throw new com.nqd.nqd_tool_content.exception.BusinessException(
+                        "TOKEN_EXPIRED",
+                        "Token Threads đã hết hạn hoặc không hợp lệ: " + err
+                );
+            }
         }
         return shortLivedToken;
+    }
+
+    private String extractErrorMessage(Exception e) {
+        if (e instanceof org.springframework.web.client.RestClientResponseException rcre) {
+            String body = rcre.getResponseBodyAsString();
+            if (body != null && !body.isBlank()) {
+                try {
+                    JsonNode root = objectMapper.readTree(body);
+                    if (root.has("error") && root.get("error").has("message")) {
+                        return root.get("error").get("message").asText();
+                    }
+                } catch (Exception ignored) {}
+                return body;
+            }
+        }
+        return e.getMessage() != null ? e.getMessage() : "Unknown error";
     }
 
     @Override
@@ -92,7 +124,7 @@ public class ThreadsAdapter implements SocialPlatformAdapter {
 
     @Override
     public List<DiscoveredAccount> discoverAccounts(String accessToken) {
-        log.info("[ThreadsAdapter] Discovering Threads Profile");
+        log.info("[ThreadsAdapter] Discovering Threads Profile via Graph API");
         if (accessToken != null && accessToken.startsWith("mock_")) {
             List<DiscoveredAccount> list = new ArrayList<>();
             list.add(DiscoveredAccount.builder()
@@ -105,30 +137,80 @@ public class ThreadsAdapter implements SocialPlatformAdapter {
             return list;
         }
 
-        try {
-            // GET /me?fields=id,username,threads_profile_picture_url
-            Map<String, Object> resp = restClient.get()
-                    .uri(threadsApiUrl + "/me?fields=id,username,threads_profile_picture_url&access_token=" + accessToken)
-                    .retrieve()
-                    .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+        if (accessToken == null || accessToken.isBlank()) {
+            return Collections.emptyList();
+        }
 
-            if (resp != null && resp.containsKey("id")) {
-                String id = (String) resp.get("id");
-                String username = (String) resp.get("username");
-                String avatarUrl = (String) resp.get("threads_profile_picture_url");
+        Map<String, Object> resp = null;
+        Exception lastException = null;
 
-                List<DiscoveredAccount> list = new ArrayList<>();
-                list.add(DiscoveredAccount.builder()
-                        .platformAccountId(id)
-                        .displayName(username != null ? username : "Threads Profile")
-                        .username(username)
-                        .avatarUrl(avatarUrl)
-                        .accountType("PROFILE")
-                        .build());
-                return list;
+        String[] fieldVariants = new String[] {
+                "id,username,name,threads_profile_picture_url",
+                "id,username,name,profile_picture_url",
+                "id,username,threads_profile_picture_url",
+                "id,username,name",
+                "id,username"
+        };
+
+        for (String fields : fieldVariants) {
+            try {
+                resp = restClient.get()
+                        .uri(threadsApiUrl + "/me?fields=" + fields + "&access_token=" + accessToken.trim())
+                        .retrieve()
+                        .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+                if (resp != null && resp.containsKey("id")) {
+                    log.info("[ThreadsAdapter] Successfully discovered Threads profile using fields=[{}]", fields);
+                    break;
+                }
+            } catch (Exception e) {
+                lastException = e;
+                log.info("[ThreadsAdapter] Query /me with fields=[{}] failed: {}. Retrying simpler fields...", fields, extractErrorMessage(e));
             }
-        } catch (Exception e) {
-            log.warn("[ThreadsAdapter] Error discovering Threads account: {}. Using fallback.", e.getMessage());
+        }
+
+        if (resp != null && resp.containsKey("id")) {
+            String id = String.valueOf(resp.get("id"));
+            String username = resp.containsKey("username") ? String.valueOf(resp.get("username")) : null;
+            String name = resp.containsKey("name") ? String.valueOf(resp.get("name")) : null;
+            String avatarUrl = null;
+            if (resp.containsKey("threads_profile_picture_url")) {
+                avatarUrl = String.valueOf(resp.get("threads_profile_picture_url"));
+            } else if (resp.containsKey("profile_picture_url")) {
+                avatarUrl = String.valueOf(resp.get("profile_picture_url"));
+            }
+
+            String display = (name != null && !name.isBlank()) ? name : (username != null ? username : "Threads User");
+
+            List<DiscoveredAccount> list = new ArrayList<>();
+            list.add(DiscoveredAccount.builder()
+                    .platformAccountId(id)
+                    .displayName(display)
+                    .username(username != null ? username : id)
+                    .avatarUrl(avatarUrl)
+                    .accountType("PROFILE")
+                    .build());
+            return list;
+        }
+
+        if (lastException != null) {
+            String err = extractErrorMessage(lastException);
+            log.error("[ThreadsAdapter] Failed to discover Threads account: {}", err);
+            if (err.contains("Session has expired") || err.contains("Error validating access token") || err.contains("code\":190") || err.contains("OAuthException")) {
+                throw new com.nqd.nqd_tool_content.exception.BusinessException(
+                        "TOKEN_EXPIRED",
+                        "Token Threads đã hết hạn hoặc không hợp lệ: " + err
+                );
+            }
+            if (err.contains("permission") || err.contains("threads_basic")) {
+                throw new com.nqd.nqd_tool_content.exception.BusinessException(
+                        "PERMISSION_DENIED",
+                        "Token Threads thiếu quyền truy cập (yêu cầu quyền threads_basic)."
+                );
+            }
+            throw new com.nqd.nqd_tool_content.exception.BusinessException(
+                    "THREADS_API_ERROR",
+                    "Lỗi Meta Threads API: " + err
+            );
         }
 
         return Collections.emptyList();

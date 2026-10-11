@@ -226,7 +226,12 @@ public class SocialServiceImpl implements SocialService {
         List<SocialAccount> savedAccounts = new ArrayList<>();
 
         if (!discovered.isEmpty()) {
-            // Lưu các Page tự động tìm thấy
+            // Cập nhật connection với thông tin thực tế từ tài khoản đầu tiên tìm thấy
+            connection.setDisplayName(discovered.get(0).getDisplayName());
+            connection.setPlatformUserId(discovered.get(0).getPlatformAccountId());
+            connection = connectionRepository.save(connection);
+
+            // Lưu các Page/Profile tự động tìm thấy
             for (DiscoveredAccount da : discovered) {
                 String pageToken = da.getPageAccessToken() != null ? da.getPageAccessToken() : rawToken;
                 String pageTokenEnc = cryptoUtil.encrypt(pageToken, connection.getId() + ":page_access_token");
@@ -255,6 +260,7 @@ public class SocialServiceImpl implements SocialService {
                             .build();
                 } else {
                     account.setDisplayName(da.getDisplayName());
+                    account.setUsername(da.getUsername());
                     account.setPageAccessTokenEnc(pageTokenEnc);
                     account.setStatus("ACTIVE");
                     account.setIsEnabled(true);
@@ -263,6 +269,15 @@ public class SocialServiceImpl implements SocialService {
                 savedAccounts.add(accountRepository.save(account));
             }
         } else {
+            // Nếu người dùng cung cấp access token nhưng không khám phá được tài khoản nào
+            if (request.getAccessToken() != null && !request.getAccessToken().isBlank()
+                    && !rawToken.startsWith("manual_") && !rawToken.startsWith("mock_")) {
+                throw new com.nqd.nqd_tool_content.exception.BusinessException(
+                        "ACCOUNT_NOT_FOUND",
+                        "Không tìm thấy tài khoản hợp lệ từ Token được cung cấp. Vui lòng kiểm tra lại Token hoặc quyền tài khoản trên Meta."
+                );
+            }
+
             // Người dùng nhập trực tiếp thông tin Page thủ công
             String pageId = request.getPlatformAccountId() != null && !request.getPlatformAccountId().isBlank()
                     ? request.getPlatformAccountId().trim()
