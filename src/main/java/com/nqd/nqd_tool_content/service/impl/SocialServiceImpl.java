@@ -159,13 +159,19 @@ public class SocialServiceImpl implements SocialService {
 
         SocialPlatformAdapter adapter = adapterRegistry.getAdapter(platform).orElse(null);
 
-        // Nếu là Facebook và người dùng cung cấp App ID + App Secret, tự động đổi sang Long-Lived Token (60 ngày)
-        // Từ Long-Lived Token này, khi quét Page qua /me/accounts sẽ sinh ra Page Access Token VĨNH VIỄN (Never Expire).
         if ("FACEBOOK".equalsIgnoreCase(platform) && adapter instanceof com.nqd.nqd_tool_content.service.social.adapter.FacebookAdapter fbAdapter) {
             if (request.getAppId() != null && !request.getAppId().isBlank() &&
                 request.getAppSecret() != null && !request.getAppSecret().isBlank()) {
                 rawToken = fbAdapter.exchangeForLongLivedToken(rawToken, request.getAppId(), request.getAppSecret());
             }
+        }
+
+        // Nếu là Threads, tự động đổi short-lived token sang Long-Lived Token (60 ngày) qua Threads Graph API
+        if ("THREADS".equalsIgnoreCase(platform) && adapter instanceof com.nqd.nqd_tool_content.service.social.adapter.ThreadsAdapter thAdapter) {
+            String secret = request.getAppSecret() != null && !request.getAppSecret().isBlank()
+                    ? request.getAppSecret().trim()
+                    : null;
+            rawToken = thAdapter.exchangeForLongLivedToken(rawToken, secret);
         }
 
         // 1. Quản lý SocialConnection: tìm kết nối đang hoạt động của platform này hoặc tạo mới

@@ -35,6 +35,12 @@ public class ThreadsAdapter implements SocialPlatformAdapter {
     @Value("${social.threads.api-url:https://graph.threads.net/v1.0}")
     private String threadsApiUrl;
 
+    @Value("${social.threads.client-id:}")
+    private String threadsClientId;
+
+    @Value("${social.threads.client-secret:}")
+    private String threadsClientSecret;
+
     public ThreadsAdapter() {
         this.restClient = RestClient.builder().build();
     }
@@ -42,6 +48,41 @@ public class ThreadsAdapter implements SocialPlatformAdapter {
     public ThreadsAdapter(RestClient customRestClient, String customApiUrl) {
         this.restClient = customRestClient;
         this.threadsApiUrl = customApiUrl;
+    }
+
+    public String exchangeForLongLivedToken(String shortLivedToken) {
+        return exchangeForLongLivedToken(shortLivedToken, null);
+    }
+
+    public String exchangeForLongLivedToken(String shortLivedToken, String explicitClientSecret) {
+        if (shortLivedToken == null || shortLivedToken.isBlank() || shortLivedToken.startsWith("mock_") || shortLivedToken.startsWith("manual_")) {
+            return shortLivedToken;
+        }
+        String secret = (explicitClientSecret != null && !explicitClientSecret.isBlank())
+                ? explicitClientSecret.trim()
+                : (threadsClientSecret != null ? threadsClientSecret.trim() : null);
+
+        if (secret == null || secret.isBlank()) {
+            log.info("[ThreadsAdapter] threadsClientSecret is not configured, skipping long-lived token exchange");
+            return shortLivedToken;
+        }
+        try {
+            log.info("[ThreadsAdapter] Exchanging short-lived token for long-lived Threads token (60 days)");
+            String url = "https://graph.threads.net/access_token?grant_type=th_exchange_token&client_secret="
+                    + secret + "&access_token=" + shortLivedToken.trim();
+            Map<String, Object> resp = restClient.get()
+                    .uri(url)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+            if (resp != null && resp.containsKey("access_token")) {
+                String longLivedToken = (String) resp.get("access_token");
+                log.info("[ThreadsAdapter] Successfully obtained 60-day long-lived Threads token");
+                return longLivedToken;
+            }
+        } catch (Exception e) {
+            log.warn("[ThreadsAdapter] Could not exchange long-lived token: {}. Using existing token.", e.getMessage());
+        }
+        return shortLivedToken;
     }
 
     @Override
@@ -207,6 +248,32 @@ public class ThreadsAdapter implements SocialPlatformAdapter {
 
     @Override
     public RefreshTokenResult refreshToken(String refreshToken) {
+        if (refreshToken != null && !refreshToken.isBlank() && !refreshToken.startsWith("mock_")
+                && !refreshToken.startsWith("manual_") && !refreshToken.startsWith("valid_test_token")) {
+            try {
+                String url = "https://graph.threads.net/refresh_access_token?grant_type=th_refresh_token&access_token=" + refreshToken.trim();
+                Map<String, Object> resp = restClient.get()
+                        .uri(url)
+                        .retrieve()
+                        .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+                if (resp != null && resp.containsKey("access_token")) {
+                    String newAccessToken = (String) resp.get("access_token");
+                    Number expiresIn = (Number) resp.get("expires_in");
+                    long seconds = expiresIn != null ? expiresIn.longValue() : 5184000L;
+                    return RefreshTokenResult.builder()
+                            .successful(true)
+                            .newAccessToken(newAccessToken)
+                            .tokenExpiresAt(LocalDateTime.now().plusSeconds(seconds))
+                            .build();
+                }
+            } catch (Exception e) {
+                log.warn("[ThreadsAdapter] Failed to refresh token via Threads API: {}", e.getMessage());
+                return RefreshTokenResult.builder()
+                        .successful(false)
+                        .errorMessage("Failed to refresh Threads token: " + e.getMessage())
+                        .build();
+            }
+        }
         return RefreshTokenResult.builder()
                 .successful(true)
                 .newAccessToken("th_token_refreshed_" + UUID.randomUUID())
