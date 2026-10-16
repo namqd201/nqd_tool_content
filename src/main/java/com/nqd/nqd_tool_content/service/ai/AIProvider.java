@@ -17,6 +17,20 @@ public interface AIProvider {
     List<String> generatePlanAngles(PlanAnglesRequest request);
 
     default PostChatResponse chat(PostChatRequest request, String topic, String angle, String tone, String platform) {
+        return chat(request, topic, angle, tone, platform, null, null, null, null);
+    }
+
+    default PostChatResponse chat(
+            PostChatRequest request,
+            String topic,
+            String angle,
+            String tone,
+            String platform,
+            String templateStructure,
+            String writingStyle,
+            String samplePosts,
+            String defaultCta
+    ) {
         return PostChatResponse.builder()
                 .reply("Chào bạn! Tôi có thể giúp gì cho bạn để hoàn thiện bài viết này?")
                 .suggestedContent(request.getCurrentContent())

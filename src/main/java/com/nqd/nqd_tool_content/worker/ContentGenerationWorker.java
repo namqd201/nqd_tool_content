@@ -35,6 +35,7 @@ public class ContentGenerationWorker {
     private final BudgetService budgetService;
     private final StorageService storageService;
     private final NotificationService notificationService;
+    private final PostTemplateRepository postTemplateRepository;
 
     private static final String WORKER_ID = "content-gen-worker-1";
     private volatile LocalDateTime lastTickAt = LocalDateTime.now();
@@ -149,11 +150,20 @@ public class ContentGenerationWorker {
             }
         }
 
+        String templateStructure = postTemplateRepository.findByUserIdAndIsDefaultTrueAndIsDeletedFalse(userId)
+                .map(PostTemplate::getStructure)
+                .orElse(null);
+
         AIContentRequest req = AIContentRequest.builder()
                 .topic(plan != null ? plan.getTopic() : "Bài viết chia sẻ kiến thức")
                 .angle(primaryPost.getAngle())
                 .instructions(plan != null ? plan.getInstructions() : "")
                 .tone(plan != null && plan.getTone() != null ? plan.getTone() : (settings != null ? settings.getTone() : null))
+                .writingStyle(settings != null ? settings.getWritingStyle() : null)
+                .defaultCta(settings != null ? settings.getDefaultCta() : null)
+                .extraGuidelines(settings != null ? settings.getExtraGuidelines() : null)
+                .samplePosts(settings != null ? settings.getSamplePosts() : null)
+                .templateStructure(templateStructure)
                 .language(plan != null && plan.getLanguage() != null ? plan.getLanguage() : "vi")
                 .platforms(platforms)
                 .forbiddenWords(forbiddenWords)

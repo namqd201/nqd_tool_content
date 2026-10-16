@@ -51,6 +51,9 @@ public class UserSettings extends BaseEntity {
     @Column(name = "extra_guidelines", columnDefinition = "TEXT")
     private String extraGuidelines;
 
+    @Column(name = "sample_posts", columnDefinition = "TEXT")
+    private String samplePosts;
+
     // AI Configuration
     @Builder.Default
     @Column(name = "text_provider_primary", length = 50)

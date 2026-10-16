@@ -34,6 +34,7 @@ public class PostService {
     private final com.nqd.nqd_tool_content.service.ai.BudgetService budgetService;
     private final com.nqd.nqd_tool_content.service.ai.ContentGuard contentGuard;
     private final com.nqd.nqd_tool_content.repository.UserSettingsRepository userSettingsRepository;
+    private final com.nqd.nqd_tool_content.repository.PostTemplateRepository postTemplateRepository;
 
     public List<PostResponse> listPosts(UUID userId, String status, String platform, UUID planId, UUID accountId) {
         List<Post> posts = postRepository.findByUserIdAndIsDeletedFalseOrderByScheduledAtAsc(userId);
@@ -208,10 +209,25 @@ public class PostService {
             }
         }
 
+        String templateStructure = null;
+        if (customReq != null && customReq.getTemplateStructure() != null && !customReq.getTemplateStructure().isBlank()) {
+            templateStructure = customReq.getTemplateStructure();
+        } else if (customReq != null && customReq.getTemplateId() != null) {
+            templateStructure = postTemplateRepository.findById(customReq.getTemplateId())
+                    .map(com.nqd.nqd_tool_content.entity.PostTemplate::getStructure)
+                    .orElse(null);
+        } else {
+            templateStructure = postTemplateRepository.findByUserIdAndIsDefaultTrueAndIsDeletedFalse(userId)
+                    .map(com.nqd.nqd_tool_content.entity.PostTemplate::getStructure)
+                    .orElse(null);
+        }
+
         String angle = (customReq != null && customReq.getAngle() != null && !customReq.getAngle().isBlank())
                 ? customReq.getAngle() : post.getAngle();
         String tone = (customReq != null && customReq.getTone() != null && !customReq.getTone().isBlank())
                 ? customReq.getTone()
+                : (customReq != null && customReq.getCustomTone() != null && !customReq.getCustomTone().isBlank())
+                ? customReq.getCustomTone()
                 : (plan != null && plan.getTone() != null ? plan.getTone() : (settings != null ? settings.getTone() : null));
 
         var req = com.nqd.nqd_tool_content.service.ai.dto.AIContentRequest.builder()
@@ -220,6 +236,11 @@ public class PostService {
                 .instructions(plan != null ? plan.getInstructions() : "")
                 .customPrompt(customReq != null ? customReq.getCustomPrompt() : null)
                 .tone(tone)
+                .writingStyle(settings != null ? settings.getWritingStyle() : null)
+                .defaultCta(settings != null ? settings.getDefaultCta() : null)
+                .extraGuidelines(settings != null ? settings.getExtraGuidelines() : null)
+                .samplePosts(settings != null ? settings.getSamplePosts() : null)
+                .templateStructure(templateStructure)
                 .language(plan != null && plan.getLanguage() != null ? plan.getLanguage() : "vi")
                 .platforms(List.of(post.getPlatform()))
                 .recentPosts(recentPosts)
@@ -269,11 +290,33 @@ public class PostService {
         var textProvider = aiFactory.getTextProvider(settings);
         String topic = plan != null ? plan.getTopic() : "Nội dung mạng xã hội";
         String angle = post.getAngle();
-        String tone = plan != null && plan.getTone() != null ? plan.getTone() : (settings != null ? settings.getTone() : "Tự nhiên, thu hút");
+        String tone = (chatReq != null && chatReq.getCustomTone() != null && !chatReq.getCustomTone().isBlank())
+                ? chatReq.getCustomTone()
+                : (plan != null && plan.getTone() != null ? plan.getTone() : (settings != null ? settings.getTone() : "Tự nhiên, thu hút"));
         String platform = post.getPlatform();
 
+        String templateStructure = null;
+        if (chatReq != null && chatReq.getTemplateStructure() != null && !chatReq.getTemplateStructure().isBlank()) {
+            templateStructure = chatReq.getTemplateStructure();
+        } else if (chatReq != null && chatReq.getTemplateId() != null) {
+            templateStructure = postTemplateRepository.findById(chatReq.getTemplateId())
+                    .map(com.nqd.nqd_tool_content.entity.PostTemplate::getStructure)
+                    .orElse(null);
+        } else {
+            templateStructure = postTemplateRepository.findByUserIdAndIsDefaultTrueAndIsDeletedFalse(userId)
+                    .map(com.nqd.nqd_tool_content.entity.PostTemplate::getStructure)
+                    .orElse(null);
+        }
+
+        String writingStyle = settings != null ? settings.getWritingStyle() : null;
+        String samplePosts = settings != null ? settings.getSamplePosts() : null;
+        String defaultCta = settings != null ? settings.getDefaultCta() : null;
+
         long startTime = System.currentTimeMillis();
-        var chatRes = textProvider.chat(chatReq, topic, angle, tone, platform);
+        var chatRes = textProvider.chat(
+                chatReq, topic, angle, tone, platform,
+                templateStructure, writingStyle, samplePosts, defaultCta
+        );
         long latencyMs = System.currentTimeMillis() - startTime;
 
         budgetService.recordUsage(

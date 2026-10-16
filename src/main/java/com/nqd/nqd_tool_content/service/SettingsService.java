@@ -73,6 +73,7 @@ public class SettingsService {
         if (newSettings.getDefaultCta() != null) current.setDefaultCta(newSettings.getDefaultCta());
         if (newSettings.getEmojiPolicy() != null) current.setEmojiPolicy(newSettings.getEmojiPolicy());
         if (newSettings.getExtraGuidelines() != null) current.setExtraGuidelines(newSettings.getExtraGuidelines());
+        if (newSettings.getSamplePosts() != null) current.setSamplePosts(newSettings.getSamplePosts());
 
         // AI configuration
         if (newSettings.getTextProviderPrimary() != null) current.setTextProviderPrimary(newSettings.getTextProviderPrimary());

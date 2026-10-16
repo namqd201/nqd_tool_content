@@ -194,6 +194,21 @@ public class GeminiProviderImpl implements AIProvider {
             String tone,
             String platform
     ) {
+        return chat(request, topic, angle, tone, platform, null, null, null, null);
+    }
+
+    @Override
+    public com.nqd.nqd_tool_content.dto.response.PostChatResponse chat(
+            com.nqd.nqd_tool_content.dto.request.PostChatRequest request,
+            String topic,
+            String angle,
+            String tone,
+            String platform,
+            String templateStructure,
+            String writingStyle,
+            String samplePosts,
+            String defaultCta
+    ) {
         if (apiKey == null || apiKey.isBlank()) {
             return com.nqd.nqd_tool_content.dto.response.PostChatResponse.builder()
                     .reply("Chào bạn! Hãy cấu hình Gemini API Key để trò chuyện trực tiếp cùng AI nhé.")
@@ -209,7 +224,11 @@ public class GeminiProviderImpl implements AIProvider {
                 topic,
                 angle,
                 tone,
-                request.getHistory()
+                request.getHistory(),
+                templateStructure,
+                writingStyle,
+                samplePosts,
+                defaultCta
         );
 
         tools.jackson.databind.ObjectMapper mapper = new tools.jackson.databind.ObjectMapper();

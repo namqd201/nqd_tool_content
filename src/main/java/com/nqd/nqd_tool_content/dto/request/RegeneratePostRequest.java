@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -12,5 +14,8 @@ import lombok.NoArgsConstructor;
 public class RegeneratePostRequest {
     private String customPrompt;
     private String tone;
+    private String customTone;
     private String angle;
+    private UUID templateId;
+    private String templateStructure;
 }

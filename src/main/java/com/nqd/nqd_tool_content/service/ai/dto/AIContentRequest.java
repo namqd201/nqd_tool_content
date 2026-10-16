@@ -29,4 +29,9 @@ public class AIContentRequest {
     private List<String> preferredHashtags = new ArrayList<>();
     private boolean generateImagePrompt;
     private String customPrompt;
+    private String writingStyle;
+    private String defaultCta;
+    private String extraGuidelines;
+    private String samplePosts;
+    private String templateStructure;
 }

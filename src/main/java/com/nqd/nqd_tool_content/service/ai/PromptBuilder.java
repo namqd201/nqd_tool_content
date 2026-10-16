@@ -40,6 +40,32 @@ public class PromptBuilder {
             sb.append("BẮT BUỘC TUÂN THỦ: Bạn phải điều chỉnh cấu trúc, nội dung và phong cách viết bám sát 100% chỉ đạo trên của người dùng!\n");
         }
 
+        if (req.getTemplateStructure() != null && !req.getTemplateStructure().isBlank()) {
+            sb.append("\n--- FORM MẪU BÀI VIẾT BẮT BUỘC TUÂN THỦ (POST TEMPLATE) ---\n");
+            sb.append("Bạn BẮT BUỘC phải tổ chức và triển khai cấu trúc bài viết bám sát 100% theo từng phần của Form mẫu sau:\n");
+            sb.append(req.getTemplateStructure().trim()).append("\n");
+            sb.append("LƯU Ý: Viết thành văn bản hoàn chỉnh, tự nhiên, cuốn hút theo các phần của dàn ý trên.\n");
+        }
+
+        if (req.getWritingStyle() != null && !req.getWritingStyle().isBlank()) {
+            sb.append("\n--- PHONG CÁCH VIẾT ĐẶC TRƯNG CỦA TÁC GIẢ (BRAND VOICE) ---\n");
+            sb.append("Phong cách viết: ").append(req.getWritingStyle().trim()).append("\n");
+        }
+
+        if (req.getDefaultCta() != null && !req.getDefaultCta().isBlank()) {
+            sb.append("Lời kêu gọi hành động (CTA) ưu tiên: ").append(req.getDefaultCta().trim()).append("\n");
+        }
+
+        if (req.getExtraGuidelines() != null && !req.getExtraGuidelines().isBlank()) {
+            sb.append("Quy tắc bổ sung: ").append(req.getExtraGuidelines().trim()).append("\n");
+        }
+
+        if (req.getSamplePosts() != null && !req.getSamplePosts().isBlank()) {
+            sb.append("\n--- BÀI VIẾT MẪU CHUẨN PHONG CÁCH CỦA TÁC GIẢ (FEW-SHOT LEARNING) ---\n");
+            sb.append("Hãy quan sát kỹ cách hành văn, ngắt nhịp, dùng từ, xưng hô và vị trí đặt câu của các bài viết mẫu sau để mô phỏng chính xác văn phong này:\n");
+            sb.append(req.getSamplePosts().trim()).append("\n");
+        }
+
         if (req.getRecentPosts() != null && !req.getRecentPosts().isEmpty()) {
             sb.append("\n--- CÁC BÀI VIẾT ĐÃ TẠO TRƯỚC ĐÓ TRONG KẾ HOẠCH (BẮT BUỘC CHỐNG TRÙNG LẶP) ---\n");
             for (int i = 0; i < req.getRecentPosts().size(); i++) {
@@ -99,6 +125,22 @@ public class PromptBuilder {
             String tone,
             java.util.List<com.nqd.nqd_tool_content.dto.request.ChatMessageDTO> history
     ) {
+        return buildPostChatPrompt(message, currentContent, platform, topic, angle, tone, history, null, null, null, null);
+    }
+
+    public String buildPostChatPrompt(
+            String message,
+            String currentContent,
+            String platform,
+            String topic,
+            String angle,
+            String tone,
+            java.util.List<com.nqd.nqd_tool_content.dto.request.ChatMessageDTO> history,
+            String templateStructure,
+            String writingStyle,
+            String samplePosts,
+            String defaultCta
+    ) {
         StringBuilder sb = new StringBuilder();
         sb.append("Bạn là AI Content Strategist & Copywriter chuyên nghiệp hàng đầu.\n");
         sb.append("Nhiệm vụ: Bạn đang trò chuyện và cùng người dùng sáng tạo/tinh chỉnh bài viết cho mạng xã hội ").append(platform != null ? platform : "FACEBOOK").append(".\n\n");
@@ -108,6 +150,27 @@ public class PromptBuilder {
         if (tone != null && !tone.isBlank()) sb.append("Giọng văn (Tone): ").append(tone).append("\n");
         if (currentContent != null && !currentContent.isBlank()) {
             sb.append("Nội dung bài viết hiện tại:\n\"\"\"\n").append(currentContent).append("\n\"\"\"\n\n");
+        }
+
+        if (templateStructure != null && !templateStructure.isBlank()) {
+            sb.append("--- FORM MẪU BÀI VIẾT BẮT BUỘC TUÂN THỦ (POST TEMPLATE) ---\n");
+            sb.append("Khi viết lại hoặc sửa bài, BẮT BUỘC phải tổ chức và bám sát theo cấu trúc Form mẫu sau:\n");
+            sb.append(templateStructure.trim()).append("\n\n");
+        }
+
+        if (writingStyle != null && !writingStyle.isBlank()) {
+            sb.append("--- PHONG CÁCH VIẾT CỦA TÁC GIẢ (BRAND VOICE) ---\n");
+            sb.append("Phong cách viết: ").append(writingStyle.trim()).append("\n\n");
+        }
+
+        if (defaultCta != null && !defaultCta.isBlank()) {
+            sb.append("Lời kêu gọi hành động (CTA) ưu tiên: ").append(defaultCta.trim()).append("\n\n");
+        }
+
+        if (samplePosts != null && !samplePosts.isBlank()) {
+            sb.append("--- BÀI VIẾT MẪU CHUẨN PHONG CÁCH CỦA TÁC GIẢ (FEW-SHOT LEARNING) ---\n");
+            sb.append("Quan sát cách ngắt dòng, nhịp điệu, cách xưng hô và hành văn từ bài mẫu sau để mô phỏng chính xác:\n");
+            sb.append(samplePosts.trim()).append("\n\n");
         }
 
         if (history != null && !history.isEmpty()) {
@@ -124,7 +187,7 @@ public class PromptBuilder {
 
         sb.append("--- NGUYÊN TẮC PHẢN HỒI ---\n");
         sb.append("1. Trò chuyện tự nhiên, thân thiện và lắng nghe người dùng bằng tiếng Việt.\n");
-        sb.append("2. Nếu người dùng yêu cầu sửa bài, viết lại, rút gọn, thêm ý: Hãy giải thích ngắn gọn cách bạn điều chỉnh và cung cấp bản bài viết hoàn chỉnh mới nhất trong trường 'suggestedContent'.\n");
+        sb.append("2. Nếu người dùng yêu cầu sửa bài, viết lại, rút gọn, áp dụng form mẫu: Hãy giải thích ngắn gọn cách bạn điều chỉnh và cung cấp bản bài viết hoàn chỉnh mới nhất trong trường 'suggestedContent'.\n");
         sb.append("3. Nếu người dùng thắc mắc, hỏi ý kiến hoặc brief chưa rõ: Hãy trả lời nhiệt tình, gợi ý thêm ý tưởng hoặc hỏi lại những điểm bạn cần người dùng làm rõ.\n");
         sb.append("4. Trả về DUY NHẤT một JSON hợp lệ (không kèm markdown ```json bọc ngoài) theo mẫu:\n");
         sb.append("{\n");

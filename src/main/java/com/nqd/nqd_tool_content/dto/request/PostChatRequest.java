@@ -19,6 +19,10 @@ public class PostChatRequest {
 
     private String currentContent;
 
+    private java.util.UUID templateId;
+    private String templateStructure;
+    private String customTone;
+
     @Builder.Default
     private List<ChatMessageDTO> history = new ArrayList<>();
 
