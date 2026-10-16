@@ -218,7 +218,7 @@ public class PostService {
                     .orElse(null);
         } else {
             templateStructure = postTemplateRepository.findByUserIdAndIsDefaultTrueAndIsDeletedFalse(userId)
-                    .map(com.nqd.nqd_tool_content.entity.PostTemplate::getStructure)
+                    .stream().findFirst().map(com.nqd.nqd_tool_content.entity.PostTemplate::getStructure)
                     .orElse(null);
         }
 
@@ -304,7 +304,7 @@ public class PostService {
                     .orElse(null);
         } else {
             templateStructure = postTemplateRepository.findByUserIdAndIsDefaultTrueAndIsDeletedFalse(userId)
-                    .map(com.nqd.nqd_tool_content.entity.PostTemplate::getStructure)
+                    .stream().findFirst().map(com.nqd.nqd_tool_content.entity.PostTemplate::getStructure)
                     .orElse(null);
         }
 

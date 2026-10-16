@@ -19,10 +19,10 @@ public class PostTemplate extends BaseEntity {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Column(name = "name", length = 150, nullable = false)
+    @Column(name = "name", columnDefinition = "TEXT", nullable = false)
     private String name;
 
-    @Column(name = "description", length = 300)
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
     @Column(name = "structure", columnDefinition = "TEXT", nullable = false)
@@ -38,4 +38,12 @@ public class PostTemplate extends BaseEntity {
     @Builder.Default
     @Column(name = "is_system")
     private Boolean isSystem = false;
+
+    @jakarta.persistence.PrePersist
+    @Override
+    protected void onCreate() {
+        super.onCreate();
+        if (isDefault == null) isDefault = false;
+        if (isSystem == null) isSystem = false;
+    }
 }

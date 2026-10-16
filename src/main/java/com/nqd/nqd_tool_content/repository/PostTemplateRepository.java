@@ -19,7 +19,7 @@ public interface PostTemplateRepository extends JpaRepository<PostTemplate, UUID
 
     Optional<PostTemplate> findByIdAndUserIdAndIsDeletedFalse(UUID id, UUID userId);
 
-    Optional<PostTemplate> findByUserIdAndIsDefaultTrueAndIsDeletedFalse(UUID userId);
+    List<PostTemplate> findByUserIdAndIsDefaultTrueAndIsDeletedFalse(UUID userId);
 
     @Query("SELECT t FROM PostTemplate t WHERE (t.userId = :userId OR t.isSystem = true) AND t.isDeleted = false ORDER BY t.isDefault DESC, t.isSystem DESC, t.createdAt DESC")
     List<PostTemplate> findAllAvailableForUser(@Param("userId") UUID userId);

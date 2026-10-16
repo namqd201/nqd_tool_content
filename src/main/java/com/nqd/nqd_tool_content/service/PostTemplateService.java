@@ -134,11 +134,11 @@ public class PostTemplateService {
     }
 
     private void unsetExistingDefault(UUID userId) {
-        templateRepository.findByUserIdAndIsDefaultTrueAndIsDeletedFalse(userId)
-                .ifPresent(t -> {
-                    t.setIsDefault(false);
-                    templateRepository.save(t);
-                });
+        List<PostTemplate> defaults = templateRepository.findByUserIdAndIsDefaultTrueAndIsDeletedFalse(userId);
+        for (PostTemplate t : defaults) {
+            t.setIsDefault(false);
+            templateRepository.save(t);
+        }
     }
 
     private void seedDefaultTemplates(UUID userId) {

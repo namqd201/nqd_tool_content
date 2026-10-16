@@ -151,7 +151,7 @@ public class ContentGenerationWorker {
         }
 
         String templateStructure = postTemplateRepository.findByUserIdAndIsDefaultTrueAndIsDeletedFalse(userId)
-                .map(PostTemplate::getStructure)
+                .stream().findFirst().map(PostTemplate::getStructure)
                 .orElse(null);
 
         AIContentRequest req = AIContentRequest.builder()
